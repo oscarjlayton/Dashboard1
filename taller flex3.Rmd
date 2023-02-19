@@ -1,0 +1,345 @@
+---
+title: "CARRERA DE LA LUZ 2022"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows        #se coloca la orientacion
+    vertical_layout: fill   #para qconfigurar lo alto en pantalla
+    theme:  flatly  #spacelab   #yeti #simplex #united #spacelab#cerulean #spacelab
+    #theme:
+    #  version: 4
+    #  bootswatch: sketchy    #sketchy
+---
+
+```{r librerias}
+#Con  --> ctl + alt + i   se agrega un nuevo chunk
+# Con el simbolo # se crean páginas
+# como está configurado por filas  una fila se coloca con doble numeral ##
+# como está configurado por filas  una columna se coloca con triple numeral ###
+# el tamaño de las columnas se realiza con un tamaño hasta 12 y se realiza con {data-width=4} {data-width=8}
+# Para crear tap se debe colocar en la fila el decorador {.tabset} para que automaticamente todas las columnas sean tab
+# Con  {data-icon=fa-ruler} coloco iconos en los indices de pagina
+#para iconos https://fontawesome.com/v4/icons/
+
+library(flexdashboard)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(tm)
+library(wordcloud)
+require(RColorBrewer)
+```
+
+```{r datasets}
+library(paqueteMET)     # activar paqueteMET
+data("CarreraLuz22")    # cargar la dataset
+CarreraLuz22$timerun_minute <- CarreraLuz22$timerun/60 
+CarreraLuz22$origen[CarreraLuz22$origen == "Santander De Quilichao"]="Stdr de Q"
+CarreraLuz22$origen[CarreraLuz22$origen == "Buenaventura"]="Buena/ra"
+CarreraLuz22$origen[CarreraLuz22$origen == "Paz De Ariporo"]="P/Ariporo"
+CarreraLuz22$origen[CarreraLuz22$origen == "Puerto Tejada"]="Pto/Tjada"
+CarreraLuz22$origen[CarreraLuz22$origen == "Bogota"]="Bogotá"
+CarreraLuz22$origen[CarreraLuz22$origen == "Bogota D.c"]="Bogotá"
+CarreraLuz22$origen[CarreraLuz22$origen == "Jamundi"]="Jamundí"
+CarreraLuz22$origen[CarreraLuz22$origen == "Popayán"]="Popayan"
+CarreraLuz22$origen[CarreraLuz22$origen == "Tuluá"]="Tulua"
+
+library(readxl)
+#CiuXNed <- read_excel("Muestra0.xlsx")
+#head(CiuXNed)
+
+#desLey<-c(0.512,0.488)
+#names(desLey)<-c("Taiwanese", "Non Taiwanese")
+#barplot(desLey,col = c("coral","coral3"), ylim = c(0,1), main="NACIONALIDAD",legend = desLey)
+```
+
+
+```{r kpis}
+
+require(dplyr)
+metricas1 <- CarreraLuz22 %>% summarise(edad_maxima = max(edad),
+                                        edad_promedio = mean(edad),
+                                  edad_minima= min(edad),
+                                  cantidad_participantes= length(id),
+                                  tiempo_minimo=min(timerun),
+                                  tiempo_maximo=max(timerun)
+                                        )
+
+
+tab1 <- table(CarreraLuz22$sex)   # Proporcion de hombres y mujeres
+a<-prop.table(tab1)
+#a[1]  #Proporcion de hombres
+#a[2]  #proporcion de mujeres
+
+tasa_hombres <- round(as.numeric(a[1])*100, 2)
+tasa_mujeres <- round(as.numeric(a[2])*100, 2)
+
+
+
+#metricas1 <- CiuXNed %>% summarise(sin_educacion = mean(Sin_edu), 
+#                                  Primaria_ = var(Primaria),
+#                                  Secundaria_ = mean(Secundaria),
+#                                  Tecnico_ = mean(Tecnico)
+#                                  ) 
+
+
+```
+
+# metricas Demográficas {data-icon="fa-bar-chart"}
+
+## 
+
+### Cantidad de participantes
+
+```{r}
+valueBox(metricas1$cantidad_participantes, icon='fa-check-circle-o', color="#C0D5F7") #para crear las etiquetas de medidas de power bi enforma de ojo
+```
+
+### Edad mínima en parcitipantes
+
+```{r}
+valueBox(metricas1$edad_minima,icon='fa-child', color="#C0D5F7") #para crear las etiquetas de medidas de power bi enforma de ojo
+```
+
+### Edad máxima en parcitipantes
+
+```{r}  
+valueBox(metricas1$edad_maxima, icon='fa-user-circle-o', color="#C0D5F7") #para crear las etiquetas de medidas de power bi enforma de ojo
+```
+
+### Edad Promedio de participantes.
+
+```{r}
+valueBox(round(metricas1$edad_promedio,2), icon='fa-user-circle-o', color="#C0D5F7") #para crear las etiquetas de medidas de power bi enforma de ojo
+```
+
+### Máxima Velocidad.
+```{r}
+valueBox(value =paste(round(10070/min(CarreraLuz22$timerun),2),"m/s"),  
+         icon = "fa-bolt", color = "#C0D5F7")
+```
+
+### Mínima Velocidad.
+```{r}
+valueBox(value =paste(round(10070/max(CarreraLuz22$timerun),2),"m/s"),  
+         icon = "fa-minus", color = "#C0D5F7")
+```
+
+### Tiempo mínimo en carrera.
+```{r}
+valueBox(value =paste(round(metricas1$tiempo_minimo/60,1),"Min"), icon='fa-user-circle-o', color="#C0D5F7") #para crear las etiquetas de medidas de power bi enforma de ojo
+```
+
+------------------------------------------------------------------------
+
+## 
+
+### Proporción de mujeres en carrera.
+
+```{r}
+gauge(tasa_mujeres, 
+      min=0,          #valor minimo que se quiere mostrar
+      max=100,        #valor maximo que se quiere mostrar
+      symbol = '%', 
+      #gaugesectors cambia el color dependiendo del porcentaje 
+      gaugeSectors(success=c(50,100),    #excelente si está entre 80 y 1oo
+                   warning = c(10,50),   #si está entre 40 y 79 mas o menos
+                   danger=c(0,10))        #Si está entre 0 y 39 peligro
+)
+```
+
+### Proporción de hombres en carrera.
+
+```{r}
+gauge(tasa_hombres, 
+      min=0,          #valor minimo que se quiere mostrar
+      max=100,        #valor maximo que se quiere mostrar
+      symbol = '%', 
+      #gaugesectors cambia el color dependiendo del porcentaje 
+      gaugeSectors(success=c(50,100),    #excelente si está entre 80 y 1oo
+                   warning = c(10,50),   #si está entre 40 y 79 mas o menos
+                   danger=c(0,10))        #Si está entre 0 y 39 peligro
+)
+```
+
+### Distancia recorrida.
+
+```{r}
+valueBox(value = paste(10.07,"Km"), #ud1$min, 
+         icon='fa fa-road', 
+         color = "#76D7C4")
+```
+
+### Tiempo promedio
+
+```{r}
+valueBox(value = paste(round(mean(CarreraLuz22$timerun)/60,2),"Minutos"), #ud1$min, 
+         icon = "fa-check", 
+         color = "#76D7C4")  ##0EB0C6
+```
+
+## 
+
+### Proporción de atletas por categoría.
+
+```{r}
+library(plotly)
+x<- data.frame(table(CarreraLuz22$categoria))  
+colors <- c('#07271D', '#164B39', '#108F64', '#4EF9C0', '#AFF7DF')  #rgb(128,133,133)
+
+fig <- plot_ly(x, labels = ~Var1, values = ~Freq, type = 'pie',
+               textposition = 'inside',
+               textinfo = 'label+percent',
+               insidetextfont = list(color = '#FFFFFF'),
+               hoverinfo = 'text',
+               text = ~paste('#', Freq, 'Corredores'),
+               marker = list(colors = colors,
+                             line = list(color = '#FFFFFF', width = 1)),
+               #The 'pull' attribute can also be used to create space between the sectors
+               showlegend = FALSE)
+fig <- fig %>% layout(xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                      yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig
+
+#library(plotly)
+#library(ggplot2)
+#fig <- plot_ly(CarreraLuz22, y = ~edad, color = ~categoria, type = "box")  #,boxpoints = "all", jitter = 0.001,pointpos = -4.8
+#fig  %>% layout(title = "Ditribución de las edades en cada categoria")  
+#fig
+```
+
+### Ditribución de las edades por categoria/sexo
+
+```{r}
+fig <- plot_ly(CarreraLuz22, x= ~categoria, y = ~edad, color = ~sex, type = "box")  #,boxpoints = "all", jitter = 0.001,pointpos = -4.8
+fig <- fig  %>% layout(boxmode = "group") #%>% layout(title = "Ditribución de las edades en cada categoria/sexo") 
+fig
+```
+
+# Tiempos de Carreras {data-icon="fa-clock-o"}
+
+
+##  {.tabset}
+
+
+### Tiempo de carrera por origen/sexo (minutos) 
+```{r}
+
+fig <- plot_ly(CarreraLuz22, x= ~origen, y = ~timerun_minute, color = ~sex, type = "box")  #,boxpoints = "all", jitter = 0.001,pointpos = -4.8
+fig <- fig  %>%  layout(boxmode = "group")  #layout(title = "Ditribución de las edades en cada categoria/sexo") %>%
+fig 
+
+```
+
+
+### Tiempos de carrera entre Hombres y Mujeres
+
+```{r}
+require(ggplot2)
+p<-ggplot(data=CarreraLuz22, aes(edad, timerun_minute)) +
+  geom_point(colour = '#76D7C4') + # los puntos
+  stat_smooth() + # lneas y bandas de suavizado (smooth)
+  facet_wrap(~ sex) + xlim(c(15,76))    # las especies van en grÃ¡ficos distintos
+p
+```
+
+
+### Tabla de frecuencia
+```{r}
+xtab2 <- xtabs(~ sex + categoria + nacionalidad, CarreraLuz22)
+#xtab2
+## flat table
+ftable(xtab2)
+```
+
+## 
+
+### Tiempos de carreras por categoría/sexo (en minutos)
+
+```{r}
+CarreraLuz22$timerun_minute <- CarreraLuz22$timerun/60 
+
+fig <- plot_ly(CarreraLuz22, x= ~categoria, y = ~timerun_minute, color = ~sex, type = "box")  #,boxpoints = "all", jitter = 0.001,pointpos = -4.8
+fig <- fig  %>%  layout(boxmode = "group")  #layout(title = "Ditribución de las edades en cada categoria/sexo") %>%
+fig 
+```
+
+### Tiempos de carreras por Nacionalidad/sexo (en minutos)
+```{r}
+CarreraLuz22$timerun_minute <- CarreraLuz22$timerun/60 
+
+fig <- plot_ly(CarreraLuz22, x= ~nacionalidad, y = ~timerun_minute, color = ~sex, type = "box")  #,boxpoints = "all", jitter = 0.001,pointpos = -4.8
+fig <- fig  %>%  layout(boxmode = "group")  #layout(title = "Ditribución de las edades en cada categoria/sexo") %>%
+fig 
+```
+
+
+# Datos {data-icon="fa-database"}  
+
+### Datos Carrera de la Luz 2022
+
+```{r}
+library(DT)
+datatable(CarreraLuz22 , class = 'cell-border stripe',
+          rownames = FALSE,
+          colnames = c('indice','Sexo','Edad', 'Ciudad Origen', 'Tiempo en carrera (Seg)', 'Categoria','Nacionalidad', 'Tiempo en carrera (Min)'))
+```
+
+
+# Descripción y análisis {data-icon="fa-search-plus"}   
+
+
+**--Datos--**
+
+La información hace referencia a los tiempos obtenidos por 1922 atletas que participaron en la carrera La Luz de la ciudad de Cali en el 2022. La información puede visualizarse en el lienzo **Datos** del presente Dashboard y contiene las siguientes variables:
+
+a. **Sexo** : Hace referencia al sexo del atleta : Hombre, Mujer.
+b. **Edad**: Variable que carcterizza la edad en años del atleta.
+c. **Origen**: Ciudad de origen.
+d. **Tiempo en carrera (seg)**: Tiempo de carrera en segundos.
+e. **Categoría**: 1. Juvenil, 2. Abierta, 3. Veteranos A, 4. Veteranos B, 5. Veteranos C.
+f. **Nacionalidad**: nacionalidad del atleta.
+g. **Tiempo en carrera (min)**: Tiempo en carrea de los atletas en segundos.
+
+
+**--Análisis--**
+
+Se diseñó el presente dashboard con la finalidad de representar la mayor cantidad de información en tres lienzos. Adicionalmente, se tomó la desición de diseñar representaciones gráficas o diagramas dinámicos para tener a disponibilidad toda la información a disponibilidad del usuario. Considerando las variables se realiza un análisis descriptivo identificando que:
+
+1. Lienzo - Métricas Demográficas:
+
+  - La distancia recorrida por cada uno de los atletas es de 10.07 km y el tiempo promedio en correr esta competencia Caleña es de 65.26 minutos.
+  - La edad mínima de los atletas que participaron en la carrera es de 15 años y la edad máxima de atletas es de años. La edad promedio de los participantes en esta versión de carrera en el año 2022 es de 37.45 años (es decír 37 años y medio aprox).
+  - La velocidad máxima a la cual se corrió en la competencia es de $5.07 m/s$ (metros por segundo) y la velocidad mínima fue de $1.01 m/s$ (metros por segundo).
+  - La proporción de mujeres que partipó en la competencia es de 38.7% mientrsa que la proporción de hombres es de 61.3%.
+  - La categorías con más participantes son:  **Abierta** , **Veteranos A** , **Veteranos B** con 61.3%, 22% y 11.8% respectivamente.
+  - En la representación gráfica "Distribución de las edades por categoría/sexo" se puede observar un boxplot que permite ver la distribución de las categorias con respecto a las edades de los participantes, se realizó tal boxplot clasificando por sexo para tener más detalle. Del cual se permmite concluír que:
+
+    - De todas las categorías de carrera la **Abierta** tiene un rango mucho más amplio de edad, desde los 18 a 39 años.
+    - Al observar los diagramas de cajas en las categorías **Veteranos A** y **Veteranos B** tanto para mujeres y hombres, se puede identificar que sus distribuciónes son sesgadas a la derecha (son simétricas positivas), esto es debido a que las medianas en ambas poblaciones es muy pequeña permitiéndose ver mayor concentración en los primeros cuartiles. 
+    - En el boxplot de la categoróa **Veteranos C** puede identificarse un dato outlier y hace referencia a una mujer de 72 años.
+    - La edad mínima hace referencia a una atleta mujer (15 años) y pertenece a la categoría **Juvenil**.
+    - Los boxplot de las demás categorías no se diferencian.
+  
+2. Lienzo - Tiempos de carreras:  
+
+- La representación boxplot **Tiempo de carrera por origen/sexo (minutos)** permite caracterizar a todos los tiempos de carrera (en minutos) dados los orígenes de los participanes en la  carrera La Luz. Permitiéndose observar que existen más competidores de la ciudad de Cali, Jinebra, Jamundí (Ciudades del Valle del cauca).
+- En los competidores de Cali, se puede observar valores outliers que hacen referencia a personas de sexo Masculino con tiempos en minutos fue de 144, 166, 105, 98, etc.
+- El paricipante de Sevilla fue el ganador y quien recorrió en menos tiempo la carrera con 33.1 minutos y una velocidad de $5.07 m/seg$
+
+- Considerando la representación **Tiempos de carreras por catogoría/sexo (en minutos)**:
+  - Se logra identificar que la categoría *Abierta* es donde se encuentra el mejor participante, que corresponde al atleta de origen Sevilla (y nacionalidad COL). Adicionalmente esta categoría (Abierta) es la más dispersa.
+  - La categoría de corredores *Veteranos* tiene al atleta que más tiempo duró en terminar la carrera (166 min -> 9960 seg), este participante se representa como dato atipico o outlier.
+- Se logra evidenciar en todas las categorías que frecuentemente los hombres tienen menores registros, no obstante esto puede ser debido a que la proporción de estos es de 61% y de mujeres de 38% en la carrera. (*vease representación: Tiempos de carrera entre Hombres y Mujeres*)
+- En la representación **Tiempos de carreras por Nacionalidad/sexo (en minutos)** se puede observar la gran participación de atletas con nacionalidad Colombiana, adicionalmente: 
+  - El 75% de los Colombianos  realizó la carrera en menos de 69 minutos y 78 minutos para hombres y mujeres respectivamente.
+  - Se observa una categoría 0, la cual hace referencia a atletas que no registraron su nacionalidad. La distribución de estos atletas es simétrica positiva o de cola derecha, lo cual permite concluír que el 50% de atletas registran tiempos de carrera menores en 62 y 65 minutos para hombres y mujeres respectivamente. 
+
+3. Lienzo - Datos: Se decide mostrar de forma interactiva los datos correspondientes a la carrera La Luz Cali 2022 con la finalidad de que el usuario pueda filtrar los resultados según su necesidad. Adicionalmente para hacer del dashboard una herramienta mucho más completa. 
+
+
+
+
+
+
+  
